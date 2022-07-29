@@ -5,7 +5,7 @@ namespace ORMPostgreSQL
 {
     public class SQLiteContext<T> : DbContext where T : class, IProduct<T>
     {
-        public DbSet<T> users { get; set; } = null!;
+        public DbSet<T> products { get; set; } = null!;
         public string DBFileName { get; private set; } = "products";
 
         public SQLiteContext() => Database.EnsureCreated();

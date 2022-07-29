@@ -14,7 +14,7 @@ namespace ORMPostgreSQL
         /// <exception cref="DbUpdateException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="DbUpdateConcurrencyException"></exception>
-        public List<T> Save(bool persistentEntry = false, params T[] users)
+        public List<T> Save(bool persistentEntry = false, params T[] products)
         {
             lock (obj)
             {
@@ -24,21 +24,21 @@ namespace ORMPostgreSQL
                     List<T> toSave = new();
                     T element;
 
-                    foreach (var user in users)
+                    foreach (var product in products)
                     {
-                        element = db.users.Find(user.Id);
+                        element = db.products.Find(product.Id);
                         if (element is null)
-                            toSave.Add(user);
+                            toSave.Add(product);
                         else
                         {
                             if (persistentEntry is false)
                                 throw new ArgumentException("One or more entities with the same key value for {'Id'} are already being tracked or are in the databases");
-                            productsNotNull.Add(user);
+                            productsNotNull.Add(product);
                         }
                     }
                     try
                     {
-                        db.users.AddRange(toSave);
+                        db.products.AddRange(toSave);
                         db.SaveChanges();
                     }
                     catch (InvalidOperationException)
@@ -56,7 +56,7 @@ namespace ORMPostgreSQL
         {
             using (SQLiteContext<T> db = new())
             {
-                return db.users.Find(id);
+                return db.products.Find(id);
             }
         }
 
@@ -67,8 +67,8 @@ namespace ORMPostgreSQL
         {
             using (SQLiteContext<T> db = new())
             {
-                return db.users.AsQueryable().Where(x => x.ProductName.ToLower().Contains(name.ToLower()))
-                                             .ToList();
+                return db.products.AsQueryable().Where(x => x.ProductName.ToLower().Contains(name.ToLower()))
+                                                .ToList();
             }
         }
 
@@ -78,8 +78,8 @@ namespace ORMPostgreSQL
             using (SQLiteContext<T> db = new())
             {
                 if (predicate is not null)
-                    return db.users.AsEnumerable().Where(predicate).ToList();
-                return db.users.AsNoTracking().ToList();
+                    return db.products.AsEnumerable().Where(predicate).ToList();
+                return db.products.AsNoTracking().ToList();
             }
         }
 
@@ -88,7 +88,7 @@ namespace ORMPostgreSQL
         public int CheckAvailableCount()
         {
             using (SQLiteContext<T> db = new())
-                return db.users.Count();
+                return db.products.Count();
         }
 
         /// <exception cref="DbUpdateException"></exception>
@@ -96,32 +96,32 @@ namespace ORMPostgreSQL
         /// <exception cref="DbUpdateConcurrencyException"></exception>        
         public List<int> Delete(bool persistentEntry = false, params int[] id)
         {
-            using (SQLiteContext<T> db = new())
+            lock (obj)
             {
-                lock (obj)
+                using (SQLiteContext<T> db = new())
                 {
-                List<int> idNotNull = new();
-                List<T> toRemove = new();
-                T element;
+                    List<int> idNotNull = new();
+                    List<T> toRemove = new();
+                    T element;
 
-                foreach (var item in id)
-                {
-                    element = db.users.Find(item);
-                    if (element is not null)
-                        toRemove.Add(element);
-                    else
+                    foreach (var item in id)
                     {
-                        if (persistentEntry is false)
-                            throw new ArgumentException("Wrong ID is absent in database");
-                        idNotNull.Add(item);
+                        element = db.products.Find(item);
+                        if (element is not null)
+                            toRemove.Add(element);
+                        else
+                        {
+                            if (persistentEntry is false)
+                                throw new ArgumentException("Wrong ID is absent in database");
+                            idNotNull.Add(item);
+                        }
                     }
-                }
-                foreach (var item in toRemove)
-                {
-                    db.users.Remove(item);
-                }
-                db.SaveChanges();
-                return idNotNull;
+                    foreach (var item in toRemove)
+                    {
+                        db.products.Remove(item);
+                    }
+                    db.SaveChanges();
+                    return idNotNull;
                 }
             }
         }

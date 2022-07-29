@@ -20,7 +20,7 @@ namespace Domain
         public string Composition { get; set; }
 
         [Required]
-        [Column("productname")]
+        [Column("product_name")]
         public string ProductName { get; set; }
 
         [Required]

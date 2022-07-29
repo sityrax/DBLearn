@@ -4,12 +4,10 @@ using System.Threading.Tasks;
 using System.Collections;
 using ORMPostgreSQL;
 using System.Linq;
-using System.Text;
-using Services;
 using Domain;
 using System;
 
-namespace ORMSQL.Tests
+namespace ORMSQL.IntegrationTests
 {
     [TestClass()]
     public class LiteProductRepositoryTests
@@ -28,39 +26,33 @@ namespace ORMSQL.Tests
             expectedCollection = new List<Candy>();
             for (int i = 0; i < additionalCount; i++)
             {
-                expectedCollection.Add
-                    (
-                    new Candy()
-                    {
-                        Id              = startId + i,
-                        ProductName     = "ProductName" + i,
-                        Brand           = "Brand" + i,
-                        Type            = "Type" + i,
-                        Composition     = "Composition" + i,
-                        ManufactureDate = DateTime.Now,
-                        EnergyValue     = 1.1f + i,
-                        Weight          = 1.1f + i,
-                        Price           = 1.01m
-                    }
-                );
+                expectedCollection.Add( new Candy()
+                {
+                    Id              = startId + i,
+                    ProductName     = "ProductName" + i,
+                    Brand           = "Brand" + i,
+                    Type            = "Type" + i,
+                    Composition     = "Composition" + i,
+                    ManufactureDate = DateTime.Now,
+                    EnergyValue     = 1.1f + i,
+                    Weight          = 1.1f + i,
+                    Price           = 1.01m
+                });
             }
             additionalCount++;
 
-            expectedCollection.Add
-(
-                    new Candy()
-                    {
-                        Id              = startId + additionalCount,
-                        ProductName     = "ProductName" + additionalCount,
-                        Brand           = "Brand" + additionalCount,
-                        Type            = "Type" + additionalCount,
-                        Composition     = "Composition" + additionalCount,
-                        ManufactureDate = DateTime.Now,
-                        EnergyValue     = 1.1f + additionalCount,
-                        Weight          = 1.1f + additionalCount,
-                        Price           = 1.01m
-                    }
-);
+            expectedCollection.Add( new Candy() 
+            { 
+                Id              = startId + additionalCount,
+                ProductName     = "ProductName" + additionalCount,
+                Brand           = "Brand" + additionalCount,
+                Type            = "Type" + additionalCount,
+                Composition     = "Composition" + additionalCount,
+                ManufactureDate = DateTime.Now,
+                EnergyValue     = 1.1f + additionalCount,
+                Weight          = 1.1f + additionalCount,
+                Price           = 1.01m 
+            });
 
             //Act
             repository.Save(true, expectedCollection.ToArray());
@@ -158,8 +150,7 @@ namespace ORMSQL.Tests
                 expected[j] = new Candy[idValues.Length];
                 for (int i = 0; i < expected[j].Length; i++)
                 {
-                    expected[j][i] =
-                    new Candy()
+                    expected[j][i] = new Candy()
                     {
                         Id              = secondId + i,
                         ProductName     = "SaveSubsequence" + i,
@@ -196,8 +187,7 @@ namespace ORMSQL.Tests
                 expected[j] = new Candy[tasks.Length];
                 for (int i = 0; i < expected[j].Length; i++)
                 {
-                    expected[j][i] =
-                    new Candy()
+                    expected[j][i] = new Candy()
                     {
                         Id              = secondId + i,
                         ProductName     = "SaveAsync" + i + "/" + j,
