@@ -29,5 +29,9 @@ namespace Services
         /// <exception cref="DbUpdateException"></exception>
         /// <exception cref="DbUpdateConcurrencyException"></exception>
         public List<int> Delete(bool persistentEntry = false, params int[] id);
+
+        /// <exception cref="DbUpdateException"></exception>
+        /// <exception cref="DbUpdateConcurrencyException"></exception>
+        public int DeleteAll();
     }
 }

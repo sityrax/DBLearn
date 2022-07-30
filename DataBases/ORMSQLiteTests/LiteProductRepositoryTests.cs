@@ -55,6 +55,7 @@ namespace ORMSQL.IntegrationTests
             });
 
             //Act
+            repository.DeleteAll();
             repository.Save(true, expectedCollection.ToArray());
         }
 
@@ -77,10 +78,8 @@ namespace ORMSQL.IntegrationTests
 
             //Act
             repository.Save(true, expectedValue);
-
             Candy actual = repository.GetAll(x => x.ProductName == expectedValue.ProductName).Last();
             repository.Delete(false, (int)actual.Id);
-
 
             //Assert
             Assert.AreEqual(expectedValue, actual);
@@ -166,8 +165,15 @@ namespace ORMSQL.IntegrationTests
             }
 
             //Act
-            repository.Save(false, expected[0]);
-            repository.Save(false, expected[1]);
+            try
+            {
+                repository.Save(false, expected[0]);
+                repository.Save(false, expected[1]);
+            }
+            finally
+            {
+                repository.Delete(true, idValues);
+            }
         }
 
         [TestMethod()]

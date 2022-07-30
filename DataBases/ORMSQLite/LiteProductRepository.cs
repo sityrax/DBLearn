@@ -8,7 +8,7 @@ namespace ORMPostgreSQL
 {
     public class LiteProductRepository<T> : IProductRepository<T> where T : class, IProduct<T>
     {
-        object obj = new();
+        object key = new();
 
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="DbUpdateException"></exception>
@@ -16,7 +16,7 @@ namespace ORMPostgreSQL
         /// <exception cref="DbUpdateConcurrencyException"></exception>
         public List<T> Save(bool persistentEntry = false, params T[] products)
         {
-            lock (obj)
+            lock (key)
             {
                 using (SQLiteContext<T> db = new())
                 {
@@ -96,7 +96,7 @@ namespace ORMPostgreSQL
         /// <exception cref="DbUpdateConcurrencyException"></exception>        
         public List<int> Delete(bool persistentEntry = false, params int[] id)
         {
-            lock (obj)
+            lock (key)
             {
                 using (SQLiteContext<T> db = new())
                 {
@@ -122,6 +122,22 @@ namespace ORMPostgreSQL
                     }
                     db.SaveChanges();
                     return idNotNull;
+                }
+            }
+        }
+
+        /// <returns> Number of items removed.</returns>
+        /// <exception cref="DbUpdateException"></exception>
+        /// <exception cref="DbUpdateConcurrencyException"></exception>      
+        public int DeleteAll()
+        {
+            lock (key)
+            {
+                using (SQLiteContext<T> db = new())
+                {
+                    IEnumerable<T> toRemove = GetAll();
+                    db.products.RemoveRange(toRemove);
+                    return db.SaveChanges();
                 }
             }
         }
