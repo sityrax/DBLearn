@@ -5,42 +5,43 @@ using System;
 
 namespace Domain
 {
+    [Table("products")]
     public class Candy : IProduct<Candy>
     {
         [Key]
-        [Column("id")]
+        [Column("id", TypeName = "INTEGER")]
         public int? Id { get; set; }
 
         [Required]
-        [Column("type")]
+        [Column("type", TypeName = "VARCHAR(64)")]
         public string Type { get; set; }
 
         [Required]
-        [Column("composition")]
+        [Column("composition", TypeName = "VARCHAR(64)")]
         public string Composition { get; set; }
 
         [Required]
-        [Column("product_name")]
+        [Column("product_name", TypeName = "VARCHAR(64)")]
         public string ProductName { get; set; }
 
         [Required]
-        [Column("price")]
+        [Column("price", TypeName = "NUMERIC(10,2)")]
         public decimal Price { get; set; }
 
         [Required]
-        [Column("weight")]
+        [Column("weight", TypeName = "REAL")]
         public float Weight { get; set; }
 
         [Required]
-        [Column("energy_value")]
+        [Column("energy_value", TypeName = "REAL")]
         public float EnergyValue { get; set; }
 
         [Required]
-        [Column("brand")]
+        [Column("brand", TypeName = "VARCHAR(64)")]
         public string Brand { get; set; }
 
         [Required]
-        [Column("manufacture_date")]
+        [Column("manufacture_date", TypeName = "DATETIME")]
         public DateTime ManufactureDate { get; set; }
 
         public Candy(string productName, string composition, string type, float weight, float energyValue, string brand, DateTime manufactureDate, decimal price, int? id = null)
