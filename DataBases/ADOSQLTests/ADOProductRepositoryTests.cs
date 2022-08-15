@@ -3,59 +3,90 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Collections;
 using System.Linq;
-using Domain;
 using System;
+using Domain;
 
-namespace ADOSQL.IntegrationTests
+namespace ADO.IntegrationTests
 {
     [TestClass()]
-    public class ADOProductRepositoryDataSetTests
+    public class ADOProductRepositoyTests
     {
-        static ADOProductRepositoryDataSet<Candy> repository;
+        static ADOProductRepository<Candy> repository;
         static List<Candy> expectedCollection;
         static int additionalCount = 100;
         static int[] id = new int[2];
         static int startId = 100;
         static int secondId { get => startId + 500; }
 
-
         [ClassInitialize()]
-        public static void SaveTestWithoutIdInit(TestContext testContext)
+        public static void SaveTestInit(TestContext testContext)
         {
-            repository = new ADOProductRepositoryDataSet<Candy>(host: "localhost",
-                                                                database: "master",
-                                                                trusted_Connection: true);
+            repository = new ADOProductRepository<Candy>(host: "localhost", 
+                                                         database: "master", 
+                                                         trusted_Connection: true);
             expectedCollection = new List<Candy>();
             for (int i = 0; i < additionalCount; i++)
             {
                 expectedCollection.Add( new Candy()
                 {
+                    Id              = startId + i,
                     ProductName     = "ProductName" + i,
-                    Brand           = "Brand"       + i,
-                    Type            = "Type"        + i,
+                    Brand           = "Brand" + i,
+                    Type            = "Type" + i,
                     Composition     = "Composition" + i,
-                    EnergyValue     = 1.1f          + i,
-                    Weight          = 1.1f          + i,
-                    Price           = 1.01m,
-                    ManufactureDate = DateTime.Now
+                    ManufactureDate = DateTime.Now,
+                    EnergyValue     = 1.1f + i,
+                    Weight          = 1.1f + i,
+                    Price           = 1.01m
                 });
             }
-            expectedCollection.Add(new Candy()
+
+            expectedCollection.Add( new Candy()
             {
+                Id              = startId + additionalCount,
                 ProductName     = "ProductName" + additionalCount,
-                Brand           = "Brand"       + additionalCount,
-                Type            = "Type"        + additionalCount,
+                Brand           = "Brand" + additionalCount,
+                Type            = "Type" + additionalCount,
                 Composition     = "Composition" + additionalCount,
-                EnergyValue     = 1.1f          + additionalCount,
-                Weight          = 1.1f          + additionalCount,
-                Price           = 1.01m,
-                ManufactureDate = DateTime.Now
+                ManufactureDate = DateTime.Now,
+                EnergyValue     = 1.1f + additionalCount,
+                Weight          = 1.1f + additionalCount,
+                Price           = 1.01m
             });
             additionalCount++;
 
             //Act
             repository.DeleteAll();
             repository.Save(true, expectedCollection.ToArray());
+        }
+
+        [TestMethod]
+        public void SaveWithoutIdTest()
+        {
+            //Arrange
+            repository = new ADOProductRepository<Candy>(host: "localhost",
+                                                         database: "master",
+                                                         trusted_Connection: true);
+            Candy expectedValue = new Candy()
+            {
+                ProductName     = "SaveWithoutIdTest",
+                Brand           = "SaveWithoutIdTest",
+                Type            = "SaveWithoutIdTest",
+                Composition     = "SaveWithoutIdTest",
+                ManufactureDate = DateTime.Now,
+                EnergyValue     = 1.1f,
+                Weight          = 1.1f,
+                Price           = 1.01m
+            };
+
+            //Act
+            repository.Save(true, expectedValue);
+
+            Candy actual = repository.GetAll(x => x.Equals(expectedValue)).First();
+            repository.Delete(false, (int)actual.Id);
+
+            //Assert
+            Assert.AreEqual(expectedValue, actual);
         }
 
         [TestMethod]
@@ -96,12 +127,10 @@ namespace ADOSQL.IntegrationTests
                         break;
                     }
                     else
-                        if (actual.Count - j == 1)
-                        throw new AssertFailedException("Collection doesn't contain certain elements.");
+                        if(actual.Count - j == 1)
+                             throw new AssertFailedException("Collection doesn't contain certain elements.");
                 }
             }
-
-            //Assert
             Assert.IsTrue(true);
         }
 
@@ -111,9 +140,9 @@ namespace ADOSQL.IntegrationTests
             IEnumerable<Candy> specialForecast = expectedCollection.Skip(additionalCount - 3).ToList();
 
             //Act
-            IEnumerable<Candy> actual = repository.GetAll(x => x.ProductName == expectedCollection[additionalCount - 3].ProductName ||
-                                                               x.ProductName == expectedCollection[additionalCount - 2].ProductName ||
-                                                               x.ProductName == expectedCollection[additionalCount - 1].ProductName);
+            IEnumerable<Candy> actual = repository.GetAll(x => x.Id == expectedCollection[additionalCount - 3].Id ||
+                                                               x.Id == expectedCollection[additionalCount - 2].Id ||
+                                                               x.Id == expectedCollection[additionalCount - 1].Id);
 
             //Assert
             CollectionAssert.AreEqual((ICollection)specialForecast, (ICollection)actual);
@@ -127,6 +156,10 @@ namespace ADOSQL.IntegrationTests
             int[] idValues = new int[2];
             Candy[][] expected = new Candy[idValues.Length][];
 
+            for (int i = 0; i < idValues.Length; i++)
+            {
+                idValues[i] = secondId + i;
+            }
             for (int j = 0; j < expected.Length; j++)
             {
                 expected[j] = new Candy[idValues.Length];
@@ -134,6 +167,7 @@ namespace ADOSQL.IntegrationTests
                 {
                     expected[j][i] = new Candy()
                     {
+                        Id              = secondId + i,
                         ProductName     = "SaveSubsequence" + i,
                         Brand           = "SaveSubsequence" + i,
                         Type            = "SaveSubsequence" + i,
@@ -154,12 +188,6 @@ namespace ADOSQL.IntegrationTests
             }
             finally
             {
-                List<Candy> returned = repository.GetAll(x => x.ProductName.Contains("SaveSubsequence") &&
-                                                              x.Brand.Contains("SaveSubsequence"));
-                for (int i = 0; i < idValues.Length; i++)
-                {
-                    idValues[i] = (int)returned[i].Id;
-                }
                 repository.Delete(true, idValues);
             }
         }
@@ -168,10 +196,14 @@ namespace ADOSQL.IntegrationTests
         public void SaveAsyncTest()
         {
             //Arrange
-            Task<List<Candy>>[] tasks = new Task<List<Candy>>[12];
-            List<int> idValues = new(tasks.Length);
+            int[] idValues = new int[12];
+            Task<List<Candy>>[] tasks = new Task<List<Candy>>[idValues.Length];
             Candy[][] expected = new Candy[tasks.Length][];
 
+            for (int i = 0; i < idValues.Length; i++)
+            {
+                idValues[i] = secondId + i;
+            }
             for (int j = 0; j < expected.Length; j++)
             {
                 expected[j] = new Candy[tasks.Length];
@@ -179,6 +211,7 @@ namespace ADOSQL.IntegrationTests
                 {
                     expected[j][i] = new Candy()
                     {
+                        Id              = secondId + i,
                         ProductName     = "SaveAsync" + i + "/" + j,
                         Brand           = "SaveAsync" + i + "/" + j,
                         Type            = "SaveAsync" + i + "/" + j,
@@ -195,25 +228,20 @@ namespace ADOSQL.IntegrationTests
             Task.WaitAll(tasks);
 
             //Act
-            List<Candy> actual = repository.GetAll(x => x.ProductName.Contains("SaveAsync") && 
-                                                        x.Brand.Contains("SaveAsync"));
-            for (int i = 0; i < actual.Count; i++)
-            {
-                idValues.Add((int)actual[i].Id);
-            }
-            repository.Delete(true, idValues.ToArray());
+            IEnumerable<Candy> actual = repository.GetAll(x => x.ProductName.Contains("SaveAsync") &&
+                                                               x.Brand.Contains("SaveAsync"));
+            repository.Delete(true, idValues);
 
             bool actualBool = false;
             int counter = 0;
             for (int j = 0; j < expected.Length; j++)
             {
                 counter = 0;
-                for (int i = 0; i < expected[j].Length; i++)
+                for (int i = 0; i < actual.Count(); i++)
                 {
-                    if (expected[j][i].Equals(actual[i]))
+                    if (expected[j][i].Equals(actual.ElementAt(i)))
                         counter++;
                 }
-
                 if (counter == expected.Length)
                 {
                     actualBool = true;
@@ -225,71 +253,53 @@ namespace ADOSQL.IntegrationTests
             Assert.IsTrue(actualBool);
         }
 
-        [TestMethod]
-        public void DeleteAsyncTest()
-        {
-            //Arrange
-            const int quantity = 10;
-            Task<List<int>>[] deleteTasks = new Task<List<int>>[quantity];
-            Task<List<Candy>>[] saveTasks = new Task<List<Candy>>[quantity];
-
-            int[] idValues = new int[quantity];
-            Candy[] expected = new Candy[quantity];
-
-            //Act
-            try
-            {
-                for (int i = 0; i < expected.Length; i++)
-                {
-                    expected[i] = new Candy()
-                    {
-                        ProductName     = "DeleteAsync" + i,
-                        Brand           = "DeleteAsync" + i,
-                        Type            = "DeleteAsync" + i,
-                        Composition     = "DeleteAsync" + i,
-                        ManufactureDate = DateTime.Now,
-                        EnergyValue     = 1.1f + i,
-                        Weight          = 1.1f + i,
-                        Price           = 1.01m + i * 1.01m
-                    };
-                }
-                for (int j = 0; j < expected.Length; j++)
-                {
-                    var iterator = j;
-                    saveTasks[iterator]   = Task.Run(() => repository.Save(true, expected[iterator]));
-
-                    deleteTasks[iterator] = Task.Run(() => repository.Delete(false, repository.Get("DeleteAsync" + iterator).First().Id.Value));
-                    Task.WaitAll(saveTasks[iterator], deleteTasks[iterator]);
-                }
-            }
-            finally
-            {
-                repository.Delete(true, idValues);
-            }
-        }
-
         [ClassCleanup]
         public static void DeleteTest()
         {
-            //Arrange
-            List<Candy> toDeleteEntities = repository.GetAll(x => x.ProductName.Contains("ProductName") && 
-                                                                  x.Composition.Contains("Composition"));
-            IEnumerable<int> enumerable = null;
-            int[] toDelete = null;
-            if (toDeleteEntities is not null)
+            int[] toDelete = new int[expectedCollection.Count];
+            for (int i = 0; i < expectedCollection.Count; i++)
             {
-                toDelete = new int[toDeleteEntities.Count];
-                for (int i = 0; i < toDeleteEntities.Count; i++)
-                {
-                    toDelete[i] = (int)toDeleteEntities[i].Id;
-                }
+                toDelete[i] = (int)expectedCollection[i].Id;
+            }
+            repository.Delete(true, toDelete);
+
+            IEnumerable<Candy> enumerable = repository.GetAll(x => x.Id >= startId && 
+                                                                   x.Id <= startId + additionalCount);
+
+            if (enumerable.Count() == 0)
+                enumerable = null;
+
+            Assert.IsNull(enumerable);
+        }
+
+        [TestMethod()]
+        public void GetLastIdTest()
+        {
+            //Arrange
+            Random random = new();
+            int id = int.MaxValue-random.Next(1, 125);
 
             //Act
-            enumerable = repository.Delete(true, toDelete);
-            }
+            id = repository.GetLastId() + 1;
+            Candy expected = new Candy()
+            {
+                Id              = id,
+                ProductName     = "GetLastIdTest",
+                Brand           = "GetLastIdTest",
+                Type            = "GetLastIdTest",
+                Composition     = "GetLastIdTest",
+                ManufactureDate = DateTime.Now,
+                EnergyValue     = 1.1f,
+                Weight          = 1.1f,
+                Price           = 1.01m
+            };
+            repository.Save(persistentEntry: true, expected);
+            id = repository.GetLastId();
+            Candy actual = repository.Get(id);
+            repository.Delete(true, id);
 
             //Assert
-            Assert.IsNull(enumerable);
+            Assert.AreEqual(expected, actual);
         }
     }
 }

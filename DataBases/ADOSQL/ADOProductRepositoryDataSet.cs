@@ -8,10 +8,12 @@ namespace ADOSQL
     public class ADOProductRepositoryDataSet<T> : IProductRepository<T> where T : class, IProduct<T>, new()
     {
         #region Connection settings
-        string Host;
-        string Database;
-        bool   Trusted_Connection;
+        public string Host { get; }
+        public string Database { get; }
+        public bool   Trusted_Connection { get; }
         #endregion
+
+        ReflectionDB<T> reflection = new();
 
         object key = new();
 
@@ -26,7 +28,7 @@ namespace ADOSQL
         {
             using(ADOContext<T> db = new(Host, Database, Trusted_Connection))
             {
-                db.Connect();
+                db.Connect(reflection.TableName);
                 return db.DataSet.Tables[db.CurrentTable].Rows.Count;
             }
         }
@@ -40,10 +42,9 @@ namespace ADOSQL
                 {
                     List<T> toReturn = null;
 
-                    db.Connect();
+                    db.Connect(reflection.TableName);
 
                     DataTable dataTable = db.DataSet.Tables[db.CurrentTable];
-                    ReflectionDB<T> reflection = new();
                     string propertyName = reflection.PropertуNames[nameof(reflection.instance.ProductName)];
 
                     // перебор всех строк таблицы
@@ -67,10 +68,9 @@ namespace ADOSQL
             lock (key)
                 using (ADOContext<T> db = new(Host, Database, Trusted_Connection))
                 {
-                    db.Connect();
+                    db.Connect(reflection.TableName);
 
                     DataTable dataTable = db.DataSet.Tables[db.CurrentTable];
-                    ReflectionDB<T> reflection = new();
                     string propertyName = reflection.PropertуNames[nameof(reflection.instance.Id)];
 
                     // перебор всех строк таблицы
@@ -91,10 +91,9 @@ namespace ADOSQL
                 {
                     List<T> toReturn = null;
 
-                    db.Connect();
+                    db.Connect(reflection.TableName);
 
                     DataTable dataTable = db.DataSet.Tables[db.CurrentTable];
-                    ReflectionDB<T> reflection = new();
 
                     // перебор всех строк таблицы
                     foreach (DataRow row in dataTable.Rows)
@@ -127,10 +126,10 @@ namespace ADOSQL
                     List<T> toReturn = null;
                     List<T> toWrite  = null;
 
-                    db.Connect();
+                    db.Connect(reflection.TableName);
+                    db.Refresh();
 
                     var table = db.DataSet.Tables[db.CurrentTable];
-                    ReflectionDB<T> reflection = new();
 
                     foreach (var entity in entities)
                     {
@@ -142,33 +141,45 @@ namespace ADOSQL
                                 if (!persistentEntry)
                                     throw new ArgumentException("One or more entities with the same key value for {'Id'} are already being tracked or are in the databases");
                                 toReturn ??= new();
-                                toReturn.Add(entity);
+                                toReturn.Add(entity); 
                                 continue;
                             }
                         }
                         foreach (DataRow row in table.Rows)
                         {
                             if (reflection.Equals(entity, row))
-                                {
+                            {
                                 if (!persistentEntry)
                                     throw new ArgumentException("One or more entities with the same key value for {'Id'} are already being tracked or are in the databases");
-                                toReturn ??= new();
-                                toReturn.Add(entity);
-                                goto NextLap;   // TODO: покаяться
-                                }
+                                    toReturn ??= new();
+                                    toReturn.Add(entity);
+                                    goto NextLap;   // TODO: покаяться за пастафарианство.
+                            }
                         }
                         toWrite ??= new();
                         toWrite.Add(entity);
                         NextLap:;
                     }
-                    if(toWrite != null)
-                    for (int i = 0; i < toWrite.Count; i++)
+                    if (toWrite != null)
                     {
-                        DataRow newRow = reflection.ReflectionWrite(source: toWrite[i], 
-                                                                    destination: table.NewRow());
-                        table.Rows.Add(newRow);
+                        int newId = 1;
+                        foreach (DataRow item in db.DataSet.Tables[db.CurrentTable].Rows) // TODO: поискать альтернативу через прямой запрос к базе.
+                        {
+                            int currentId = (int)item[reflection.PrimaryKey.dbName];
+                            if (currentId > newId)
+                                newId = currentId + 1;
+                        }
+                        for (int i = 0; i < toWrite.Count; i++)
+                        {
+                            DataRow newRow = reflection.ReflectionWrite(source: toWrite[i],
+                                                                        destination: table.NewRow());
+                            if (newRow[reflection.PrimaryKey.dbName] == DBNull.Value)
+                                newRow[reflection.PrimaryKey.dbName] = newId + i;
+                            table.Rows.Add(newRow);
+                        }
+                        db.Update();
+                        db.Refresh();
                     }
-                    db.Update();
                     return toReturn;
                 }
         }
@@ -185,7 +196,7 @@ namespace ADOSQL
                 List<int> toReturn = null;
                 List<int> toDelete = null;
 
-                db.Connect();
+                db.Connect(reflection.TableName);
 
                 DataTable dataTable = db.DataSet.Tables[db.CurrentTable];
 
@@ -225,7 +236,7 @@ namespace ADOSQL
         {
             using (ADOContext<T> db = new(Host, Database, Trusted_Connection))
             {
-                db.Connect();
+                db.Connect(reflection.TableName);
                 var rows = db.DataSet.Tables[db.CurrentTable].Rows;
                 int rowsCount = rows.Count;
                 foreach (DataRow row in rows)

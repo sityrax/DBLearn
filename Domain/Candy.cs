@@ -44,19 +44,6 @@ namespace Domain
         [Column("manufacture_date", TypeName = "DATETIME")]
         public DateTime ManufactureDate { get; set; }
 
-        public Candy(string productName, string composition, string type, float weight, float energyValue, string brand, DateTime manufactureDate, decimal price, int? id = null)
-        {
-            this.Id = id;
-            this.Type = type;
-            this.Weight = weight;
-            this.EnergyValue = energyValue;
-            this.Brand = brand;
-            this.ProductName = productName;
-            this.Composition = composition;
-            this.ManufactureDate = manufactureDate;
-            this.Price = price;
-        }
-
         public Candy() { }
 
         public override bool Equals(object obj)

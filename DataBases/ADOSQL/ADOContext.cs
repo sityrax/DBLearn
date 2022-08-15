@@ -11,11 +11,13 @@ namespace ADOSQL
     public class ADOContext<T> :IDisposable, IAsyncDisposable where T : class, IProduct<T>, new()
     {
         string sqlCommandToLoad;
-        public DataSet DataSet { get; private set; }    // особенность класса в использовании DataSet
+        ReflectionDB<T> reflection = new();
 
-        private SqlDataAdapter Adapter;
+        // ущербность класса в использовании DataSet, который байкотирует добавление значения первичного ключа вручную.
+        public DataSet DataSet { get; private set; }    // TODO: решить проблему.
         public SqlCommand Command { get; private set; }
         public SqlConnection Сonnection { get; private set; }
+        private SqlDataAdapter Adapter;
 
         #region Connection settings
         public string Host { get; }
@@ -60,18 +62,15 @@ namespace ADOSQL
 
         ///<summary>Connect to database.</summary>
         /// <exception cref="ArgumentException"></exception>
-        public void Connect(string connectionTable = "products")
+        public void Connect(string connectionTable, bool recreate = false)
         {
             CurrentTable ??= connectionTable.TrimStart().Split(' ')[0]; // отрезаем все лишнее.
-            ReflectionDB<T> reflection = new();
 
-            #region Creation instances
             Сonnection = new SqlConnection(connectionString);
             Сonnection.Open();
             Command = Сonnection.CreateCommand();
             DataSet = new DataSet();
-            CreateTable();
-            #endregion
+            CreateTable(recreate);
 
             sqlCommandToLoad ??= $"SELECT * FROM {CurrentTable}";   // создаем запрос для получения всех записей из таблицы.
             Adapter = new SqlDataAdapter(sqlCommandToLoad, Сonnection);
@@ -79,7 +78,7 @@ namespace ADOSQL
             
             DataSet.Tables[CurrentTable].PrimaryKey = new DataColumn[] // Помечаем первичный ключ.
             { 
-                DataSet.Tables[CurrentTable].Columns[reflection.PropertуNames[nameof(reflection.instance.Id)]] 
+                DataSet.Tables[CurrentTable].Columns[reflection.PrimaryKey.dbName] 
             };
         }
 
@@ -93,7 +92,7 @@ namespace ADOSQL
                 if (recreate)
                 {
                     Command.CommandText = 
-                     $@"IF OBJECT_ID(N'dbo.{CurrentTable}', N'U') IS NOT NULL   
+                     $@"IF OBJECT_ID(N'dbo.{CurrentTable}', N'U') IS NOT NULL
                 DROP TABLE {CurrentTable};";  // наши прихоти.
                     Command.ExecuteNonQuery();  // добавляем запрос в транзакцию.
 
@@ -126,27 +125,33 @@ namespace ADOSQL
             Adapter.Update(DataSet, CurrentTable);
         }
 
+        public void Refresh()
+        {
+            SqlCommandBuilder builder = new(Adapter);
+            DataSet.Tables.Clear();
+            Adapter.Fill(DataSet, CurrentTable);
+        }
+
         private string GetCreateTableRequire()
         {
-            ReflectionDB<T> reflection = new();
-            StringBuilder stringBuilder = new StringBuilder($"CREATE TABLE {CurrentTable} (");;
+            StringBuilder stringBuilder = new StringBuilder($"CREATE TABLE {CurrentTable} (");
 
-            PropertyInfo[] properties = reflection.Properties;
+            PropertyInfoDB[] properties = reflection.PropertiesInfoDB;
             string columnIdentity = null;
 
             for (int i = 0; i < properties.Length; i++)
             {
                 if (i > 0)
                     stringBuilder.Append(", ");
-                string columnName     = reflection.PropertуNames[properties[i].Name];
-                string columnType     = reflection.PropertуTypes[properties[i]];
-                string columnRequired = reflection.PropertуRequired[properties[i]];
-                       columnIdentity = reflection.PrimaryKey.Name == columnName ? "IDENTITY" : string.Empty;
+                string columnName     = properties[i].dbName;
+                string columnType     = properties[i].dbType;
+                string columnRequired = properties[i].Required ? "NOT NULL" : "NULL";
+                       columnIdentity = properties[i].PrimaryKey ? "IDENTITY" : string.Empty;
                 stringBuilder.Append($"{columnName} {columnType} {columnRequired} {columnIdentity}");
             }
             if (columnIdentity is not null)
             {
-                string columnName = reflection.PropertуNames[reflection.PrimaryKey.Name];
+                string columnName = reflection.PrimaryKey.dbName;
                 stringBuilder.Append($"CONSTRAINT \"PK_{CurrentTable}_{columnName}\" PRIMARY KEY({columnName})");
             }
             stringBuilder.Append($");");
